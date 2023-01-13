@@ -1,0 +1,35 @@
+
+name: Azure_CD
+on: [push]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+    # checkout the repo
+    - name: 'Checkout GitHub Action' 
+      uses: actions/checkout@main
+    
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: gutek.azurecr.io
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+    - run: |
+        docker build ./src/RazorPagesTestSample/ -f ./src/RazorPagesTestSample/DockerFile -t gutek.azurecr.io/dotnet-sample:${{ github.sha }}
+        docker push gutek.azurecr.io/dotnet-sample:${{ github.sha }}     
+      
+    - uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'github101'
+        images: 'gutek.azurecr.io/dotnet-sample:${{ github.sha }}'
+    
+    - name: Azure logout
+      run: |
+        az logout
